@@ -1,0 +1,1014 @@
+*******************************Fetching and Updating Data ---> React Query*************************************
+
+>> What is React Query?
+------------------------
+A powerful library for managing data fetching and caching in React applications. 
+It is has lots of benefits---> 
+
+
+
+
+***********************************************Setting Up React Query**************************************
+-----------------------------------
+npm i @tanstack/react-query@4.28
+
+---------------
+main.tsx
+---------------
+import "bootstrap/dist/css/bootstrap.css";
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import App from "./App";
+import "./index.css";
+
+const queryClient = new QueryClient();
+
+ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
+  <React.StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <App />
+    </QueryClientProvider>
+  </React.StrictMode>
+);
+
+
+
+##########################################################
+QueryClient is the core object for managing and caching remote data in React Query. 
+
+
+***************************************************Fetching Data**********************************************
+
+To fetch data using React Query, we use Query hook (useQuery) that is defined in tanstack/react-query. 
+useQuery({
+  queryKey:['todos'],
+  queryFn:
+})
+
+queryKey is the unique identifier for query. It is internally used for caching. Data that is stored in cache, is accessible via this key. 
+ queryFn --> This is the function that is used to fetch data from backend. (Actually it cache and manages data.. Fuck off !!!)
+ 
+--------------------
+TodoList.tsx
+--------------------
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
+
+interface Todo {
+  id: number;
+  title: string;
+  userId: number;
+  completed: boolean;
+}
+
+const TodoList = () => {
+  const fetchTodos = () =>
+    axios
+      .get<Todo[]>("https://jsonplaceholder.typicode.com/todos")
+      .then((res) => res.data);
+
+  const { data: todos } = useQuery({
+    queryKey: ["todos"],
+    queryFn: fetchTodos,
+  });
+
+  // if (error) return <p>{error}</p>;
+
+  return (
+    <ul className="list-group">
+      {todos?.map((todo) => (
+        <li key={todo.id} className="list-group-item">
+          {todo.title}
+        </li>
+      ))}
+    </ul>
+  );
+};
+
+export default TodoList;
+
+############################################################
+With this implementation we get number of benefits-->
+Auto Retries
+Auto Refresh
+Caching
+
+**************************************************Handling Errors*************************************************
+
+---------------
+TodoList.tsx
+---------------
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
+
+interface Todo {
+  id: number;
+  title: string;
+  userId: number;
+  completed: boolean;
+}
+
+const TodoList = () => {
+  const fetchTodos = () =>
+    axios
+      .get<Todo[]>("https://jsonplaceholder.typicode.com/todos")
+      .then((res) => res.data);
+
+  const { data: todos, error } = useQuery({
+    queryKey: ["todos"],
+    queryFn: fetchTodos,
+  });
+
+  if (error) return <p>{error}</p>;		//We will still get error. Why?
+
+  return (
+    <ul className="list-group">
+      {todos?.map((todo) => (
+        <li key={todo.id} className="list-group-item">
+          {todo.title}
+        </li>
+      ))}
+    </ul>
+  );
+};
+
+export default TodoList;
+
+
+###############################################
+The reason is that React Query does not know the type of error that may happen when fetching data. Because it depends upon how we fetch the data, are we using axios or fetch or any other api.  So, 
+
+------------------------------------------------------
+  const { data: todos, error } = useQuery<Todo[],Error>({
+    queryKey: ["todos"],
+    queryFn: fetchTodos,
+  });
+  
+  
+In Axios, all errors are instances of Error interface in Typescript. 
+Now, the type of Error becomes Error | null in the above code.  
+--------------------------------------------------------
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>START
+-------------------
+TodoList.tsx
+-------------------
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
+
+interface Todo {
+  id: number;
+  title: string;
+  userId: number;
+  completed: boolean;
+}
+
+const TodoList = () => {
+  const fetchTodos = () =>
+    axios
+      .get<Todo[]>("https://jsonplaceholder.typicode.com/todos")
+      .then((res) => res.data);
+
+  const { data: todos, error } = useQuery<Todo[], Error>({
+    queryKey: ["todos"],
+    queryFn: fetchTodos,
+  });
+
+  if (error) return <p>{error.message}</p>;
+
+  return (
+    <ul className="list-group">
+      {todos?.map((todo) => (
+        <li key={todo.id} className="list-group-item">
+          {todo.title}
+        </li>
+      ))}
+    </ul>
+  );
+};
+
+export default TodoList;
+
+--------------
+App.tsx
+--------------
+import "./App.css";
+import TodoList from "./react-query/TodoList";
+
+function App() {
+  return <TodoList />;
+}
+
+export default App;
+
+#########################################################
+Now, it is ok. 
+You can check retry mechanism by writing wrong url. It will retry to fetch data behind the scene and after that it will show the message Network error. 
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>END
+
+**********************************************Showing A Loading Indicator***********************************************
+
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>START
+-------------------
+TodoList.tsx
+-------------------
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
+
+interface Todo {
+  id: number;
+  title: string;
+  userId: number;
+  completed: boolean;
+}
+
+const TodoList = () => {
+  const fetchTodos = () =>
+    axios
+      .get<Todo[]>("https://jsonplaceholder.typicode.com/todos")
+      .then((res) => res.data);
+
+  const {
+    data: todos,
+    error,
+    isLoading,
+  } = useQuery<Todo[], Error>({
+    queryKey: ["todos"],
+    queryFn: fetchTodos,
+  });
+
+  if (isLoading) return <p>Loading...</p>;
+
+  if (error) return <p>{error.message}</p>;
+
+  return (
+    <ul className="list-group">
+      {todos?.map((todo) => (
+        <li key={todo.id} className="list-group-item">
+          {todo.title}
+        </li>
+      ))}
+    </ul>
+  );
+};
+
+export default TodoList;
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>END
+
+##########################################################################
+Wow, everything is taken care of by React Query. 
+
+
+********************************************Creating a Custom Query Hook***********************************************
+
+react-query
+  hooks
+    useTodos.ts
+    
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>START
+
+-----------------
+useTodos.ts
+-----------------
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
+
+interface Todo {
+    id: number;
+    title: string;
+    userId: number;
+    completed: boolean;
+  }
+
+const useTodos = ()=>{
+    const fetchTodos = () =>
+    axios
+      .get<Todo[]>("https://jsonplaceholder.typicode.com/todos")
+      .then((res) => res.data);
+
+      return useQuery<Todo[], Error>({
+        queryKey: ["todos"],
+        queryFn: fetchTodos,
+      });
+}
+
+export default useTodos;
+
+
+-------------------
+TodoList.tsx
+-------------------
+import useTodos from "./hooks/useTodos";
+
+const TodoList = () => {
+  const { data: todos, error, isLoading } = useTodos();
+
+  if (isLoading) return <p>Loading...</p>;
+
+  if (error) return <p>{error.message}</p>;
+
+  return (
+    <ul className="list-group">
+      {todos?.map((todo) => (
+        <li key={todo.id} className="list-group-item">
+          {todo.title}
+        </li>
+      ))}
+    </ul>
+  );
+};
+
+export default TodoList;
+
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>END
+
+
+********************************************Using React Query Dev Tools********************************************
+
+npm i @tanstack/react-query-devtools@4.28
+
+
+Now, import below in main.tsx--->
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+
+---------------
+main.tsx
+---------------
+import "bootstrap/dist/css/bootstrap.css";
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import App from "./App";
+import "./index.css";
+
+const queryClient = new QueryClient();
+
+ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
+  <React.StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <App />
+      <ReactQueryDevtools />
+    </QueryClientProvider>
+  </React.StrictMode>
+);
+
+##############################################################
+Note: ReactQueryDevtools will only be used in development phase. It is not going in production.
+
+Now, you can see Red flower on the bottom of the browser. Click on it you see Query ---> 
+key (todos)
+observers --> Number of components that are using this query. IN our case, only one component is using this query. If this component is unmounted then observer will be zero and query will be inactive. Inactive query are garbage collected and removed from the cache. 
+
+********************************************Customizing Query Settings********************************************
+
+Our Queries have some default settings that work in most situations. But, we can customize them per Query or globally. 
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>START
+
+------------
+main.tsx
+------------
+import "bootstrap/dist/css/bootstrap.css";
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import App from "./App";
+import "./index.css";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 3,
+      cacheTime: 300_000, //5m
+      staleTime: 10 * 1000,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      refetchOnMount: false,
+    },
+  },
+});
+
+ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
+  <React.StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <App />
+      <ReactQueryDevtools />
+    </QueryClientProvider>
+  </React.StrictMode>
+);
+
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>END
+
+#####################################################################
+We are defining settings for Queries globally. 
+Here, 
+>> cacheTime:300_000; is default cache time. It means if Query has no observer (No component using this Query), that query is considered in-active. The results of inactive query is removed from the cache after 5 minutes. This is called garbage collection. 
+>> staleTime --> How long the data is considered fresh. The default value of staleTime is 0.
+  staleTime:10*1000; //10s  ---> After 10 seconds, the data will become stale.   
+ReactQuery refreshes stale data under three situations. 
+	> When the network is reconnected. 
+		>  refetchOnReconnect: true,	(default value)
+	> When a component is mounted. 
+		> refetchOnMount: true;	(default value)
+	> When the window is refocussed. 
+		In the browser, when we go into another tab and comes back to your project tab. 
+		But, you can always disable if you want to do. 
+			> refetchOnWindowFocus:false
+>> refetchOnReconnect ---> If the client goes offline, and comes back online. React query will refetch our query. Its default value is true. We can set its value to false. 
+ 
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>START
+But, we don't want to define settings globally. Instead, We are going to configure stale time per Query.  
+
+------------
+main.tsx
+------------
+import "bootstrap/dist/css/bootstrap.css";
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import App from "./App";
+import "./index.css";
+
+const queryClient = new QueryClient();
+
+ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
+  <React.StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <App />
+      <ReactQueryDevtools />
+    </QueryClientProvider>
+  </React.StrictMode>
+);
+
+-----------------
+useTodos.ts
+-----------------
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
+
+interface Todo {
+    id: number;
+    title: string;
+    userId: number;
+    completed: boolean;
+  }
+
+const useTodos = ()=>{
+    const fetchTodos = () =>
+    axios
+      .get<Todo[]>("https://jsonplaceholder.typicode.com/todos")
+      .then((res) => res.data);
+
+      return useQuery<Todo[], Error>({
+        queryKey: ["todos"],
+        queryFn: fetchTodos,
+        staleTime:10*1000
+      });
+}
+
+export default useTodos;
+
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>END
+
+**************************************************Exercise: Fetching Data******************************
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>START
+-------------------
+PostList.tsx
+-------------------
+import axios from "axios";
+import { useEffect, useState } from "react";
+import usePosts from "./hooks/usePosts";
+
+const PostList = () => {
+  
+  const { data: posts, error, isLoading } = usePosts();
+
+  if (isLoading) return <p>Loading...</p>;
+
+  if (error) return <p>{error.message}</p>;
+
+  return (     
+      <ul className="list-group">
+        {posts.map((post) => (
+          <li key={post.id} className="list-group-item">
+            {post.title}
+          </li>
+        ))}
+      
+    </>
+  );
+};
+
+export default PostList;
+
+------------------
+usePosts.ts
+------------------
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
+
+interface Post {
+    id: number;
+    title: string;
+    body: string;
+    userId: number;
+  }
+
+const usePosts = ()=>{
+    const fetchPosts = ()=> axios
+      .get('https://jsonplaceholder.typicode.com/posts')
+      .then((res)=>res.data)
+    return useQuery<Post[],Error>({
+        queryKey:['posts'],
+        queryFn:fetchPosts,
+        staleTime:10*1000
+    })
+     
+}
+export default usePosts;
+
+------------------
+App.tsx
+------------------
+import "./App.css";
+import PostList from "./react-query/PostList";
+import TodoList from "./react-query/TodoList";
+
+function App() {
+  return <PostList />;
+}
+
+export default App;
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>END
+
+
+************************************************Parameterized Queries**********************************
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>START
+----------------
+PostList.tsx
+----------------
+import axios from "axios";
+import { useEffect, useState } from "react";
+import usePosts from "./hooks/usePosts";
+
+const PostList = () => {
+  const [userId, setUserId] = useState<number>();
+  const { data: posts, error, isLoading } = usePosts(userId);
+
+  if (isLoading) return <p>Loading...</p>;
+
+  if (error) return <p>{error.message}</p>;
+
+  return (
+    <>
+      <select
+        onChange={(event) => setUserId(parseInt(event.target.value))}
+        value={userId}
+        className="form-select mb-3"
+      >
+        <option value=""></option>
+        <option value="1">User 1</option>
+        <option value="2">User 2</option>
+        <option value="3">User 3</option>
+      </select>
+      <ul className="list-group">
+        {posts.map((post) => (
+          <li key={post.id} className="list-group-item">
+            {post.title}
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+};
+
+export default PostList;
+
+----------------
+usePosts.ts
+----------------
+interface Post {
+    id: number;
+    title: string;
+    body: string;
+    userId: number;
+  }
+
+const usePosts = (userId:number | undefined)=>{		    //We writing undefined because initially no user is selected
+    
+    return useQuery<Post[],Error>({
+        queryKey:['users',userId,'posts'],  
+        queryFn:()=> axios
+        .get('https://jsonplaceholder.typicode.com/posts',{
+          params:{
+            userId
+          }
+        })
+        .then((res)=>res.data),
+        staleTime:10*1000
+    })
+     
+}
+export default usePosts;
+
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>END
+
+We follow a pattern when we write keys 
+queryKey:['users',userId,'posts'] --> 
+The queryKey serves as a unique identifier for a particular query. It helps React Query to manage the cache and data associated with that query.
+Cache will identify our query as /users/{userId}/posts   	It is similar to (/users/1/posts)
+Here, userId is a parameter for this query. Everytime the value of userId changes, React query will fetch the posts for that user in the backend. This is very similar to dependency array of Effect hook, any time any of the dependency is changed, the effect is re-executed. We have same concept here. Anytime the userId changes, our Query will be re-executed.  
+
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>START
+
+----------------
+PostList.tsx
+----------------
+import axios from "axios";
+import { useEffect, useState } from "react";
+import usePosts from "./hooks/usePosts";
+
+const PostList = () => {
+  const [userId, setUserId] = useState<number>();
+  const { data: posts, error, isLoading } = usePosts(userId);
+
+  if (isLoading) return <p>Loading...</p>;
+
+  if (error) return <p>{error.message}</p>;
+
+  return (
+    <>
+      <select
+        onChange={(event) => setUserId(parseInt(event.target.value))}
+        value={userId}
+        className="form-select mb-3"
+      >
+        <option value=""></option>
+        <option value="1">User 1</option>
+        <option value="2">User 2</option>
+        <option value="3">User 3</option>
+      </select>
+      <ul className="list-group">
+        {posts.map((post) => (
+          <li key={post.id} className="list-group-item">
+            {post.title}
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+};
+
+export default PostList;
+
+---------------
+usePost.ts
+---------------
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
+
+interface Post {
+    id: number;
+    title: string;
+    body: string;
+    userId: number;
+  }
+
+const usePosts = (userId:number | undefined)=>{
+    
+    return useQuery<Post[],Error>({
+        queryKey:userId?['users',userId,'posts']:['posts'],  
+        queryFn:()=> axios
+        .get('https://jsonplaceholder.typicode.com/posts',{
+          params:{
+            userId
+          }
+        })
+        .then((res)=>res.data),
+        staleTime:10*1000
+    })
+     
+}
+export default usePosts;
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>END
+
+
+******************************************************Paginated Queries**************************************
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>START
+
+--------------
+usePosts.ts
+--------------
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
+
+interface Post {
+    id: number;
+    title: string;
+    body: string;
+    userId: number;
+  }
+
+  interface PostQuery{
+    page:number, 
+    pageSize:number
+  }
+
+const usePosts = (query:PostQuery)=>{
+    
+    return useQuery<Post[],Error>({
+        queryKey:['posts',query],  
+        queryFn:()=> axios
+        .get('https://jsonplaceholder.typicode.com/posts',{
+          params:{
+            _start:(query.page-1)*query.pageSize,
+            _limit:query.pageSize
+          }
+        })
+        .then((res)=>res.data),
+        staleTime:10*1000
+    })
+     
+}
+export default usePosts;
+
+------------------
+PostList.tsx
+------------------
+import axios from "axios";
+import { useEffect, useState } from "react";
+import usePosts from "./hooks/usePosts";
+
+const PostList = () => {
+  const pageSize = 10;
+  const [page, setPage] = useState(1);
+  const { data: posts, error, isLoading } = usePosts({ page, pageSize });
+
+  if (isLoading) return <p>Loading...</p>;
+
+  if (error) return <p>{error.message}</p>;
+
+  return (
+    <>
+      <ul className="list-group">
+        {posts.map((post) => (
+          <li key={post.id} className="list-group-item">
+            {post.title}
+          </li>
+        ))}
+      </ul>
+      <button
+        disabled={page === 1}
+        className="btn btn-primary my-3"
+        onClick={() => setPage(page - 1)}
+      >
+        Previous
+      </button>
+      <button
+        className="btn btn-primary my-3 ms-1"
+        onClick={() => setPage(page + 1)}
+      >
+        Next
+      </button>
+    </>
+  );
+};
+
+export default PostList;
+
+###################################################
+But, when we click on Next or previous button. The page jumps up and down automatically. This is due the presence of Loading screen. 
+We can improve the user experience by keeping the data on current page while we are waiting for new data. When new data is available we can seemlessly swap the new page. 
+
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>END
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>START
+
+---------------
+usePosts.ts
+---------------
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
+
+interface Post {
+    id: number;
+    title: string;
+    body: string;
+    userId: number;
+  }
+
+  interface PostQuery{
+    page:number, 
+    pageSize:number
+  }
+
+const usePosts = (query:PostQuery)=>{
+    
+    return useQuery<Post[],Error>({
+        queryKey:['posts',query],  
+        queryFn:()=> axios
+        .get('https://jsonplaceholder.typicode.com/posts',{
+          params:{
+            _start:(query.page-1)*query.pageSize,
+            _limit:query.pageSize
+          }
+        })
+        .then((res)=>res.data),
+        staleTime:10*1000,
+        keepPreviousData:true
+    })
+     
+}
+export default usePosts;
+
+----------------
+PostList.tsx
+----------------
+import axios from "axios";
+import { useEffect, useState } from "react";
+import usePosts from "./hooks/usePosts";
+
+const PostList = () => {
+  const pageSize = 10;
+  const [page, setPage] = useState(1);
+  const { data: posts, error, isLoading } = usePosts({ page, pageSize });
+
+  if (isLoading) return <p>Loading...</p>;
+
+  if (error) return <p>{error.message}</p>;
+
+  return (
+    <>
+      <ul className="list-group">
+        {posts.map((post) => (
+          <li key={post.id} className="list-group-item">
+            {post.title}
+          </li>
+        ))}
+      </ul>
+      <button
+        disabled={page === 1}
+        className="btn btn-primary my-3"
+        onClick={() => setPage(page - 1)}
+      >
+        Previous
+      </button>
+      <button
+        className="btn btn-primary my-3 ms-1"
+        onClick={() => setPage(page + 1)}
+      >
+        Next
+      </button>
+    </>
+  );
+};
+
+export default PostList;
+
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>END
+
+
+****************************************************Infinite Queries****************************************
+
+When we are using InfiniteQuery, we can not use state variable const [page, setPage] = useState(1); to keep track of page number. Because InfiniteQuery handles pagination automatically. And using state variable to keep track of page number can lead issues with cache and data consistency. 
+
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>START
+
+-----------------
+usePosts.ts
+-----------------
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import axios, { all } from "axios";
+
+interface Post {
+    id: number;
+    title: string;
+    body: string;
+    userId: number;
+  }
+
+  interface PostQuery{
+   
+    pageSize:number
+  }
+
+const usePosts = (query:PostQuery)=>{
+    
+    return useInfiniteQuery<Post[],Error>({
+        queryKey:['posts',query],  
+        queryFn:({pageParam =1})=> axios
+        .get('https://jsonplaceholder.typicode.com/posts',{
+          params:{
+            _start:(pageParam-1)*query.pageSize,
+            _limit:query.pageSize
+          }
+        })
+        .then((res)=>res.data),
+        staleTime:10*1000,
+        keepPreviousData:true,
+        getNextPageParam:(lastPage,allPages)=>{
+          // 1--> 2
+          return lastPage.length? allPages.length+1:undefined;
+        }
+    })
+     
+}
+export default usePosts;
+
+-------------------
+PostList.tsx
+-------------------
+import axios from "axios";
+import { useEffect, useState } from "react";
+import usePosts from "./hooks/usePosts";
+import React from "react";
+
+const PostList = () => {
+  const pageSize = 10;
+
+  const { data, error, isLoading, fetchNextPage, isFetchingNextPage } =
+    usePosts({ pageSize });
+
+  if (isLoading) return <p>Loading...</p>;
+
+  if (error) return <p>{error.message}</p>;
+
+  return (
+    <>
+      <ul className="list-group">
+        {data.pages.map((page, index) => (
+          <React.Fragment key={index}>
+            {page.map((post) => (
+              <li key={post.id} className="list-group-item">
+                {post.title}
+              </li>
+            ))}
+          </React.Fragment>
+        ))}
+      </ul>
+
+      <button
+        className="btn btn-primary my-3 ms-1"
+        disabled={isFetchingNextPage}
+        onClick={() => fetchNextPage()}
+      >
+        {isFetchingNextPage ? "Loading..." : "Load More"}
+      </button>
+    </>
+  );
+};
+
+export default PostList;
+
+##########################################################
+But, we calculate page number, infiniteQuery has a function for that and it is getNextPageParam.
+getNextPageParam:(lastPage,allPages)=>{
+  // 1--> 2
+  return lastPage.length? allPages.length+1:undefined;
+}
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>END
+
+
+******************************************************Till Lecture 18 completed*******************************
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
