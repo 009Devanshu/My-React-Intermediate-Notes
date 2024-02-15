@@ -1261,11 +1261,96 @@ export default useTodos;
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>END
 
 
+************************************************Creating A Reusable HTTP Service********************************
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>START
+
+------------------
+todoService.ts
+------------------
+import APIClient from "./apiClient";
+
+export interface Todo {
+    id: number;
+    title: string;
+    userId: number;
+    completed: boolean;
+  }
+
+export default new APIClient<Todo>("/todos");
+
+---------------------
+useTodos.ts
+---------------------
+import { useQuery } from "@tanstack/react-query";
+import { CACHE_KEY_TODOS } from "../constants";
+import todoService, { Todo } from "../services/todoService";
 
 
 
 
+const useTodos = ()=>{
+     
 
+      return useQuery<Todo[], Error>({
+        queryKey: CACHE_KEY_TODOS,
+        queryFn: todoService.getAll,
+        staleTime:10*1000
+      });
+}
+
+export default useTodos;
+
+-----------------
+useAddtodo.ts
+----------------
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { CACHE_KEY_TODOS } from "../constants";
+import todoService, { Todo } from "../services/todoService";
+
+
+interface AddTodoContext {
+    previousTodos: Todo[];
+  }
+
+const useAddTodo = (onAdd:()=>void)=>{
+    const queryClient = useQueryClient();
+  return useMutation<Todo, Error, Todo, AddTodoContext>({
+    mutationFn: todoService.post,
+    onMutate: (newTodo: Todo) => {
+      const previousTodos = queryClient.getQueryData<Todo[]>(CACHE_KEY_TODOS) || [];
+      queryClient.setQueryData<Todo[]>(CACHE_KEY_TODOS, (todos=[]) => [
+        newTodo,
+        ...todos,
+      ]);
+      onAdd();
+    
+      return { previousTodos };
+    },
+    onSuccess: (savedTodo, newTodo) => {
+      queryClient.setQueryData<Todo[]>(CACHE_KEY_TODOS, (todos) =>
+        todos?.map((todo) => (todo === newTodo ? savedTodo : todo))
+      );
+    },
+    onError: (error, newTodo, context) => {
+      if (!context) return;
+      queryClient.setQueryData<Todo[]>(CACHE_KEY_TODOS, context.previousTodos);
+    },
+  });
+}
+export default useAddTodo;
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>END
+
+******************************************Understanding The application layers********************************
+
+Components	---> TodoForm, TodoList			(Top)
+|
+Custom Hooks    ---> useTodos, useAddTodo
+|
+Http Services   ---> todoService
+|
+API Client      --->  APIClient				(Bottom)
 
 
 
