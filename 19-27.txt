@@ -662,7 +662,7 @@ What if the request fails, In that case, we should roll-back and restore the UI 
 onError(error:Error, variables:Todo, context:unknown) 
 Context is the object that we create to pass data in between our callbacks. Here, we need a context object that includes previous todos before we update the cache. 
 
-const previousTodos = queryClient.getQueryData<Todo[]>(['todo']); 	(Returning the previous todos before we update the cache. )
+const previousTodos = queryClient.getQueryData<Todo[]>(['todos']); 	(Returning the previous todos before we update the cache. )
 
 ------------------
 TodoForm.tsx
@@ -974,7 +974,8 @@ const TodoForm = () => {
 export default TodoForm;
 
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>END
-
+#####################################################################################
+Check Your Implementation ---> Put x in your url and check your implementation. 
 
 ************************************************Creating A Custom Mutation Hook****************************
 
