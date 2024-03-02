@@ -1010,7 +1010,7 @@ const useAddTodo = (onAdd:()=>void)=>{
       const previousTodos = queryClient.getQueryData<Todo[]>(CACHE_KEY_TODOS) || [];
       queryClient.setQueryData<Todo[]>(CACHE_KEY_TODOS, (todos=[]) => [
         newTodo,
-        ...todos,
+        ...todos
       ]);
       onAdd();
     
@@ -1264,6 +1264,9 @@ export default useTodos;
 
 ************************************************Creating A Reusable HTTP Service********************************
 
+services
+  totoService.ts
+  
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>START
 
 ------------------
