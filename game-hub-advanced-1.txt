@@ -1261,7 +1261,333 @@ export default useGames;
 
 ****************************************Exercise:Simplifying Query Objects*********************************
 
+In your application, click on any genre. Open React-Query-Devtools. You can see a complex object. 
 
+[
+  "games",
+  {
+    "genre": {
+      "id": 3,
+      "name": "Adventure",
+      "slug": "adventure",
+      "games_count": 137833,
+      "image_background": "https://media.rawg.io/media/games/b54/b54598d1d5cc31899f4f0a7e3122a7b0.jpg",
+      "games": [
+        {
+          "id": 3439,
+          "slug": "life-is-strange-episode-1-2",
+          "name": "Life is Strange",
+          "added": 14730
+        },
+        {
+          "id": 23027,
+          "slug": "the-walking-dead",
+          "name": "The Walking Dead: Season 1",
+          "added": 10942
+        },
+        {
+          "id": 13668,
+          "slug": "amnesia-the-dark-descent",
+          "name": "Amnesia: The Dark Descent",
+          "added": 9715
+        },
+        {
+          "id": 19487,
+          "slug": "alan-wake",
+          "name": "Alan Wake",
+          "added": 9713
+        },
+        {
+          "id": 4386,
+          "slug": "saints-row-the-third",
+          "name": "Saints Row: The Third",
+          "added": 9627
+        },
+        {
+          "id": 29177,
+          "slug": "detroit-become-human",
+          "name": "Detroit: Become Human",
+          "added": 9493
+        }
+      ]
+    }
+  }
+]
+
+We can see overly complex key. 
+We don't need any of this stuff here to filter games on the basis of Genre. 
+
+In App.tsx--> 
+
+...
+...
+
+ <Show above="lg">
+        <GridItem area="aside" paddingX={5}>
+          <GenreList
+            onSelectGenre={(genre) => setGameQuery({ ...gameQuery, genre })}
+          />
+...
+...
+Here genre is complex object. Our task is to replace this genre object with genre id. (So, when user select genre, we want to store genre id in gamequery)
+
+
+-------------------------
+In app.tsx
+-------------------------
+
+..
+..
+export interface GameQuery {
+  genre: number | undefined;		//undefined because initially the value is undefined and once the value is selected
+  platform: Platform | null;		//user is not going to unselect it. 
+  sortOrder: string;
+  searchText: string;
+}
+
+export interface GameQuery {
+  genre?: number;			//We can also do it. 
+  platform: Platform | null;
+  sortOrder: string;
+  searchText: string;
+}
+
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>START
+
+-------------------
+App.tsx
+-------------------
+import {
+  Button,
+  ButtonGroup,
+  Grid,
+  GridItem,
+  Flex,
+  Show,
+  Box,
+  Heading,
+} from "@chakra-ui/react";
+import NavBar from "./components/NavBar";
+
+import GenreList from "./components/GenreList";
+import GameGrid from "./components/GameGrid";
+import { useState } from "react";
+import { Genre } from "./hooks/useGenres";
+import PlatformSelector from "./components/PlatformSelector";
+import { Platform } from "./hooks/usePlatforms";
+import { SortSelector } from "./components/SortSelector";
+
+//undefined:the absense of a value
+//null:the intentional absense of a value
+
+export interface GameQuery {
+  genreId?: number;
+  platformId?: number;
+  sortOrder: string;
+  searchText: string;
+}
+
+function App() {
+  const [gameQuery, setGameQuery] = useState<GameQuery>({} as GameQuery);
+  return (
+    <Grid
+      templateAreas={{ base: `"nav" "main"`, lg: `"nav nav" "aside main"` }}
+      templateColumns={{
+        base: "1fr",
+        lg: "200px 1fr",
+      }}
+    >
+      <GridItem area="nav">
+        <NavBar
+          onSearch={(searchText) => setGameQuery({ ...gameQuery, searchText })}
+        />
+      </GridItem>
+      <Show above="lg">
+        <GridItem area="aside" paddingX={5}>
+          <GenreList
+            selectedGenreId={gameQuery.genreId}
+            onSelectGenre={(genre) =>
+              setGameQuery({ ...gameQuery, genreId: genre.id })
+            }
+          />
+        </GridItem>
+      </Show>
+
+      <GridItem area="main">
+        <Heading marginBottom={5} marginLeft={2} marginTop={7}>
+          Games
+        </Heading>
+        <Flex paddingLeft={2} marginBottom={5}>
+          <Box marginRight={5}>
+            <PlatformSelector
+              selectedPlatformId={gameQuery.platformId}
+              onSelectPlatform={(platform) =>
+                setGameQuery({ ...gameQuery, platformId: platform.id })
+              }
+            />
+          </Box>
+          <SortSelector
+            sortOrder={gameQuery.sortOrder}
+            onSelectSortOrder={(sortOrder) =>
+              setGameQuery({ ...gameQuery, sortOrder })
+            }
+          />
+        </Flex>
+
+        <GameGrid gameQuery={gameQuery} />
+      </GridItem>
+    </Grid>
+  );
+}
+
+export default App;
+
+----------------------
+PlatformSelector.tsx
+----------------------
+import usePlatforms, { Platform } from "../hooks/usePlatforms";
+import { Button, Menu, MenuButton, MenuItem, MenuList } from "@chakra-ui/react";
+import { BsChevronDown } from "react-icons/bs";
+
+interface Props {
+  onSelectPlatform: (platform: Platform) => void;
+  selectedPlatformId?: number;
+}
+
+const PlatformSelector = ({ onSelectPlatform, selectedPlatformId }: Props) => {
+  const { data, error } = usePlatforms();
+  const selectedPlatform = data?.results.find(
+    (p) => p.id === selectedPlatformId
+  );
+  if (error) return null;
+  return (
+    <Menu>
+      <MenuButton as={Button} rightIcon={<BsChevronDown />}>
+        {selectedPlatform?.name || "Platforms"}
+      </MenuButton>
+      <MenuList>
+        {data?.results.map((platform) => (
+          <MenuItem
+            onClick={() => onSelectPlatform(platform)}
+            key={platform.id}
+          >
+            {platform.name}
+          </MenuItem>
+        ))}
+      </MenuList>
+    </Menu>
+  );
+};
+
+export default PlatformSelector;
+
+-----------------
+useGames.ts
+-----------------
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { GameQuery } from "../App";
+import APIClient,{ FetchResponse } from "../services/api-client";
+import { Platform } from "./usePlatforms";
+
+const apiClient = new APIClient<Game>('/games');
+
+export interface Game {
+    id: number;
+    name: string;
+    background_image:string;
+    parent_platforms:{platform:Platform}[];
+    metacritic:number;
+    rating_top:number;
+    
+  }
+  
+ 
+
+const useGames = (gameQuery:GameQuery)=>
+useInfiniteQuery<FetchResponse<Game>,Error>({
+  queryKey:['games',gameQuery],
+  queryFn:({pageParam=1})=>apiClient.getAll({
+    params:{
+      genres:gameQuery.genreId,
+      parent_platforms:gameQuery.platformId,
+      ordering:gameQuery.sortOrder,
+      search:gameQuery.searchText,
+      page:pageParam
+  },
+  }),
+  getNextPageParam:(lastPage,allPages)=>{
+    return lastPage.next? allPages.length+1:undefined;
+  },
+  staleTime:24*60*60*1000 //24h
+})
+
+export default useGames;
+
+----------------
+GenreList.tsx
+----------------
+import {
+  HStack,
+  Image,
+  List,
+  ListItem,
+  Spinner,
+  Button,
+  Heading,
+} from "@chakra-ui/react";
+import useGenres, { Genre } from "../hooks/useGenres";
+import getCroppedImageUrl from "../services/image-url";
+
+interface Props {
+  onSelectGenre: (genre: Genre) => void;
+  selectedGenreId?: number;
+}
+
+const GenreList = ({ selectedGenreId, onSelectGenre }: Props) => {
+  const { data, isLoading, error } = useGenres();
+  if (error) return null;
+  if (isLoading) return <Spinner />;
+  return (
+    <>
+      <Heading fontSize="2xl" marginBottom={3}>
+        Genres
+      </Heading>
+      <List>
+        {data?.results.map((genre) => (
+          <ListItem key={genre.id} paddingY="5px">
+            <HStack>
+              <Image
+                boxSize="32px"
+                borderRadius={8}
+                objectFit="cover"
+                src={getCroppedImageUrl(genre.image_background)}
+              />
+              <Button
+                whiteSpace="normal"
+                textAlign="left"
+                fontWeight={genre.id === selectedGenreId ? "bold" : "normal"}
+                onClick={() => onSelectGenre(genre)}
+                fontSize="lg"
+                variant="link"
+              >
+                {genre.name}
+              </Button>
+            </HStack>
+          </ListItem>
+        ))}
+      </List>
+    </>
+  );
+};
+
+export default GenreList;
+
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>END
+
+
+******************************************The End:With Other Left but Baki sab bakwas h***********************
 
 
 
